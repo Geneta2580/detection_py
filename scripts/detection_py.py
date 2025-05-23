@@ -4,6 +4,7 @@
 import rospy
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32
 import os
 import sys
 import numpy as np
@@ -26,6 +27,8 @@ class DataProcessor:
     def __init__(self):
         self.last_timestamp = None  # 初始化时间戳数据
         rospy.Subscriber("/gnss_err_topic", Float32MultiArray, self.callback)
+        global pub 
+        pub = rospy.Publisher('detection', Float32, queue_size=10)
 
     def callback(self, msg):
         # 提取时间戳
@@ -45,6 +48,7 @@ class DataProcessor:
 
     def process_data(self, new_data):
         # new_data = float(new_data)  # 转换为数值
+        new_data = (new_data - 0.018) / (7.815 - 0.018) # 数据归一化
         data_window.append(new_data)  # 添加到窗口（自动丢弃旧数据）
 
         # 更新输入数据（转换为3D数组）
@@ -57,9 +61,12 @@ class DataProcessor:
             outputs = session.run([output_name], {input_name: data_3d})
             outputs_tensor = torch.from_numpy(outputs[0]) 
             _, predicted = torch.max(outputs_tensor, dim=1)
+            predicted = predicted.float()  # 转换为 float32
+            predicted_np = predicted.numpy()
 
+            msg = Float32(data=predicted_np)
+            pub.publish(msg)
             rospy.loginfo(predicted)
-            # pub = rospy.Publisher('detection', String, queue_size=10)
 
 
 if __name__ == '__main__':
