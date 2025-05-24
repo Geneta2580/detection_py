@@ -28,13 +28,13 @@ class DataProcessor:
         self.last_timestamp = None  # 初始化时间戳数据
         rospy.Subscriber("/gnss_err_topic", Float32MultiArray, self.callback)
         global pub 
-        pub = rospy.Publisher('detection', Float32, queue_size=10)
+        pub = rospy.Publisher('detection', Float32MultiArray, queue_size=10)
 
     def callback(self, msg):
         # 提取时间戳
         current_timestamp = msg.data[1]
 
-        # 检查时间戳是否相同
+        # 检查时间戳是否相同,相同直接等待下一个数据
         if self.last_timestamp is not None and current_timestamp == self.last_timestamp:
             rospy.loginfo("时间戳相同，丢弃数据")
             return
@@ -44,9 +44,9 @@ class DataProcessor:
         rospy.loginfo(f"接收新数据，时间戳: {current_timestamp}")
         
         # 在这里处理有效数据（例如调用模型推理）
-        self.process_data(msg.data[0])
+        self.process_data(msg.data[0], msg.data[1])
 
-    def process_data(self, new_data):
+    def process_data(self, new_data, new_data_stamps):
         # new_data = float(new_data)  # 转换为数值
         new_data = (new_data - 0.018) / (7.815 - 0.018) # 数据归一化
         data_window.append(new_data)  # 添加到窗口（自动丢弃旧数据）
@@ -60,11 +60,11 @@ class DataProcessor:
             output_name = session.get_outputs()[0].name  # 获取输出节点名称
             outputs = session.run([output_name], {input_name: data_3d})
             outputs_tensor = torch.from_numpy(outputs[0]) 
-            _, predicted = torch.max(outputs_tensor, dim=1)
+            _, predicted = torch.max(outputs_tensor, dim=1) # 输出概率最大之索引
             predicted = predicted.float()  # 转换为 float32
             predicted_np = predicted.numpy()
 
-            msg = Float32(data=predicted_np)
+            msg = Float32MultiArray(data=[new_data_stamps, predicted])
             pub.publish(msg)
             rospy.loginfo(predicted)
 
