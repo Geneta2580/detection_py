@@ -14,7 +14,7 @@ sys.path.append(f'/home/geneta/anaconda3/envs/pytorch/lib/python3.8/site-package
 import torch
 import onnxruntime as ort
 
-model_path = "/home/geneta/project/model/model.onnx"
+model_path = "/home/geneta/project/model/model1.onnx"
 session = ort.InferenceSession(model_path)
 # data = np.genfromtxt(f'/home/geneta/dataset/1408.csv', delimiter=',', skip_header=0) # 读入为double(float64)
 # data_3d = data.reshape((1, 50, 1)).astype(np.float32) # 调整为3D输入，强制转为float32
